@@ -22,9 +22,20 @@ const registerUser = async (email: string, password: string) => {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     const client = await pool.connect();
-    const result = await client.query('INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *', [email, hashedPassword]);
-    client.release();
-    return result.rows[0];
+    
+    try {
+        const result = await client.query('SELECT * FROM users WHERE email = $1', [email]);
+        if(result) {
+            throw new Error("Email already exist")
+        }
+        const newUser = await client.query('INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *', [email, hashedPassword]);
+
+        client.release();
+        return newUser;
+    } catch (err: any) {
+        client.release();
+            throw new Error('something wrong');
+    }
 };
 
 const loginUser = async (email: string, password: string) => {
